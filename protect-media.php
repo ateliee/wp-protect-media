@@ -1,7 +1,7 @@
 <?php
 /*
   Plugin Name: ProtectMedia
-  Plugin URI: https://ateliee.com
+  Plugin URI: https://github.com/ateliee/wp-protect-media
   Description: auth login access uploads file directory
   Version: 1.0.0
   Author: ateliee

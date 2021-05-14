@@ -24,7 +24,6 @@ class ProtectMedia
     function __construct()
     {
         if (is_admin() && is_user_logged_in()) {
-            // メニュー追加
             add_action('admin_menu', [$this, 'set_plugin_menu']);
             add_action('admin_init', [$this, 'save_config']);
         }
@@ -99,18 +98,15 @@ class ProtectMedia
 
     public function save_config()
     {
-        // nonceで設定したcredentialのチェック
         if (isset($_POST[self::CREDENTIAL_NAME]) && $_POST[self::CREDENTIAL_NAME]) {
             if (check_admin_referer(self::CREDENTIAL_ACTION, self::CREDENTIAL_NAME)) {
 
-                // 保存処理
                 $path = isset($_POST['path']) ? $_POST['path'] : "";
                 $is_block = isset($_POST['block']) ? $_POST['block'] : 0;
 
                 if($this->update_path($path)){
                     update_option(self::PLUGIN_DB_SETTING_BLOCK, $is_block);
                     $completed_text = "設定の保存が完了しました。";
-                    // 保存が完了したら、wordpressの機構を使って、一度だけメッセージを表示する
                     set_transient(self::PLUGIN_SETTING_TRANSIENT_MESSAGE, $completed_text, 5);
                 }else{
                     set_transient(self::PLUGIN_SETTING_TRANSIENT_ERROR, 1, 5);
@@ -180,7 +176,6 @@ EOF;
             $str = @file_get_contents(self::HTACCESS_PATH);
             if($str === false){
                 $completed_text = ".htaccessが読み込めませんでした。";
-                // 保存が完了したら、wordpressの機構を使って、一度だけメッセージを表示する
                 set_transient(self::PLUGIN_SETTING_SLAG, $completed_text, 5);
                 return false;
             }
@@ -199,7 +194,6 @@ EOF;
         }
         if(@file_put_contents(self::HTACCESS_PATH, $str) === false){
             $completed_text = ".htaccessへの書き込みに失敗しました。";
-            // 保存が完了したら、wordpressの機構を使って、一度だけメッセージを表示する
             set_transient(self::PLUGIN_SETTING_SLAG, $completed_text, 5);
             return false;
         }

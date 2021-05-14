@@ -3,7 +3,7 @@ Contributors: ateliee
 Tags: protect,uploads,media,Japanese
 Requires at least: 5.2
 Tested up to: 5.7
-Stable tag: 2.9
+Stable tag: 1.0
 
 Upload Directory Required Auth Login.
 

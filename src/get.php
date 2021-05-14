@@ -6,19 +6,19 @@ if(!defined('ABSPATH')){
     echo "Invalid Server Error";
     exit;
 }
-// ブロック中の場合
+// is blocked
 if(ProtectMedia::is_block()){
     http_response_code(500);
     echo "Access Blocked";
     exit;
 }
-// ログインしていない場合はアクセス拒否
+// required auth login
 if(!is_user_logged_in()){
     http_response_code(401);
     echo "Invalid Auth";
     exit;
 }
-// 許可するディレクトリ
+// protect dir check
 $protect_dir = ProtectMedia::get_protect_dir();
 if($protect_dir === false){
     http_response_code(500);

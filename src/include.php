@@ -18,6 +18,8 @@ class ProtectMedia
 
     const HTACCESS_PATH = WP_CONTENT_DIR.'/.htaccess';
 
+    const TEXTDOMAIN = 'protect-media';
+
     static function init()
     {
         return new self();
@@ -25,6 +27,11 @@ class ProtectMedia
 
     function __construct()
     {
+        load_plugin_textdomain(
+                self::TEXTDOMAIN,
+                false,
+            basename( realpath(__DIR__.'/..')).'/languages'
+        );
         if (is_admin() && is_user_logged_in()) {
             add_action('admin_menu', [$this, 'set_plugin_menu']);
             add_action('admin_init', [$this, 'save_config']);
@@ -50,8 +57,8 @@ class ProtectMedia
     function set_plugin_menu(){
         add_submenu_page(
             'upload.php',
-            'Protect Media Setting',
-            'Protect Media',
+            __('Protect Media Setting', self::TEXTDOMAIN),
+            __('Protect Media', self::TEXTDOMAIN),
             'manage_options',
             self::PLUGIN_SETTING_SLAG,
             [$this, 'show_config_form']
@@ -74,27 +81,25 @@ class ProtectMedia
         $is_error = get_transient(self::PLUGIN_SETTING_TRANSIENT_ERROR);
         ?>
         <div class="wrap">
-            <h1>Protect Media Settings</h1>
-            <p>
-                設定されたパスのファイルアクセスをログイン必須にします。
-            </p>
+            <h1><?php esc_html_e('Protect Media Setting', self::TEXTDOMAIN); ?></h1>
+            <p><?php esc_html_e('Make login required for file access of the set path.', self::TEXTDOMAIN); ?></p>
 <?php if(!$this->is_allow_override()){ ?>
-    <div class="notice"><p>php.iniのAllowOverrideが有効か確認してください。</p></div>
+    <div class="notice"><p><?php esc_html_e('Check if AllowOverride in php.ini is enabled.', self::TEXTDOMAIN); ?></p></div>
 <?php } ?>
 <?php if(!file_exists(self::HTACCESS_PATH)){ ?>
-    <div class="notice notice-warning"><p><?php echo self::HTACCESS_PATH; ?>が存在しません。設定を保存して更新してください。</p></div>
+    <div class="notice notice-warning"><p><?php echo sprintf(esc_html__('%s does not exist. Save and update your settings.', self::TEXTDOMAIN), self::HTACCESS_PATH); ?></p></div>
 <?php } else if(!is_writable(self::HTACCESS_PATH)){ ?>
     <?php if($is_error){ ?>
-        <div class="notice notice-alt notice-error"><p>.htaccessへの書き込み権限がありません。下記を<?php self::HTACCESS_PATH; ?>に記載ください</p></div>
+        <div class="notice notice-alt notice-error"><p><?php echo sprintf(esc_html__('You don\'t have write permission to .htaccess. Please describe the following in %s.', self::TEXTDOMAIN), self::HTACCESS_PATH); ?></p></div>
         <div class="notice notice-error">
         <pre><?php echo esc_html($this->get_htaccess_str($path)); ?></pre>
         </div>
     <?php }else{ ?>
-        <div class="notice notice-alt notice-error"><p>.htaccessへの書き込み権限がありません。</p></div>
+        <div class="notice notice-alt notice-error"><p><?php esc_html_e('You don\'t have write permission to .htaccess.', self::TEXTDOMAIN); ?></p></div>
     <?php } ?>
 <?php } ?>
 <?php if(!$path){ ?>
-    <div class="notice notice-alt notice-error"><p>パスが無効のため保護が有効化されていません。</p></div>
+    <div class="notice notice-alt notice-error"><p><?php esc_html_e('Protection is not enabled because the path is invalid.', self::TEXTDOMAIN); ?></p></div>
 <?php } ?>
 <?php if($message = get_transient(self::PLUGIN_SETTING_TRANSIENT_MESSAGE)){ ?>
     <div id="message" class="notice notice-success"><p><?php echo esc_html($message); ?></p></div>
@@ -102,11 +107,11 @@ class ProtectMedia
             <form action="" method='post' id="my-submenu-form">
                 <?php wp_nonce_field(self::CREDENTIAL_ACTION, self::CREDENTIAL_NAME) ?>
                 <p>
-                    <label for="title">パス設定</label>
-                    <input type="text" name="path" value="<?php echo esc_html($path); ?>" placeholder="uploadsからのパスを指定してください" size="60" />
+                    <label for="title"><?php esc_html_e('Path setting', self::TEXTDOMAIN); ?></label>
+                    <input type="text" name="path" value="<?php echo esc_html($path); ?>" placeholder="<?php esc_html_e('Please specify the path from uploads', self::TEXTDOMAIN); ?>" size="60" />
                 </p>
                 <p>
-                    <label for="title">アクセスを全て拒否</label>
+                    <label for="title"><?php esc_html_e('Deny all access', self::TEXTDOMAIN); ?></label>
                     <input type="checkbox" name="block" value="1" <?php if($is_block){ ?> checked="checked"<?php } ?> />
                 </p>
 
@@ -126,7 +131,7 @@ class ProtectMedia
 
                 if($this->update_path($path)){
                     update_option(self::PLUGIN_DB_SETTING_BLOCK, $is_block);
-                    $completed_text = "設定の保存が完了しました。";
+                    $completed_text = __('The settings have been saved.', self::TEXTDOMAIN);
                     set_transient(self::PLUGIN_SETTING_TRANSIENT_MESSAGE, $completed_text, 5);
                 }else{
                     set_transient(self::PLUGIN_SETTING_TRANSIENT_ERROR, 1, 5);
@@ -192,7 +197,7 @@ EOF;
         if(file_exists(self::HTACCESS_PATH)){
             $str = @file_get_contents(self::HTACCESS_PATH);
             if($str === false){
-                $completed_text = ".htaccessが読み込めませんでした。";
+                $completed_text = __('.htaccess could not be read.', self::TEXTDOMAIN);
                 set_transient(self::PLUGIN_SETTING_SLAG, $completed_text, 5);
                 return false;
             }
@@ -201,7 +206,7 @@ EOF;
         $body_str = $this->get_htaccess_str($path);
         $begin_tag = '# BEGIN '.$plugin_id;
         $end_tag = '# END '.$plugin_id;
-        $hint_tag = '# これらのマーカー間にあるディレクティブへのいかなる変更も上書きされてしまいます。';
+        $hint_tag = '# '.__('Any changes to the directive between these markers will be overwritten.', self::TEXTDOMAIN);
         if(preg_match('/^(.*'.preg_quote($begin_tag).'\n)(.*\n)('.preg_quote($end_tag).'.*)$/s', $str, $matchs)){
             $str = $matchs[1].$hint_tag."\n".$body_str."\n".$matchs[3];
         }else{
@@ -210,7 +215,7 @@ EOF;
         if(!$str){
         }
         if(@file_put_contents(self::HTACCESS_PATH, $str) === false){
-            $completed_text = ".htaccessへの書き込みに失敗しました。";
+            $completed_text = __('Failed to write to .htaccess.', self::TEXTDOMAIN);
             set_transient(self::PLUGIN_SETTING_SLAG, $completed_text, 5);
             return false;
         }

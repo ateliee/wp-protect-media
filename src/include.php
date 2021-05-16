@@ -115,7 +115,7 @@ class ProtectMedia
                     <input type="checkbox" name="block" value="1" <?php if($is_block){ ?> checked="checked"<?php } ?> />
                 </p>
 
-                <p><input type="submit" value="Save" class="button button-primary button-large"></p>
+                <p><input type="submit" value="<?php esc_html_e('Save'); ?>" class="button button-primary button-large"></p>
             </form>
         </div>
         <?php

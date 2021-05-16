@@ -1,4 +1,8 @@
 <?php
+if ( ! defined( 'ABSPATH' ) ) {
+    exit; // Exit if accessed directly.
+}
+
 class ProtectMedia
 {
     const PLUGIN_ID         = 'protect-media';
@@ -13,7 +17,6 @@ class ProtectMedia
     const PLUGIN_DB_SETTING_BLOCK  = self::PLUGIN_DB_PREFIX . 'block';
 
     const HTACCESS_PATH = WP_CONTENT_DIR.'/.htaccess';
-    const REWRITE_ENDPOINT = __DIR__.'/get.php';
 
     static function init()
     {
@@ -26,6 +29,22 @@ class ProtectMedia
             add_action('admin_menu', [$this, 'set_plugin_menu']);
             add_action('admin_init', [$this, 'save_config']);
         }
+        add_action('wp', [$this, 'elegance_referal_init']);
+    }
+
+    function elegance_referal_init()
+    {
+        // protect dir check
+        $protect_dir = self::get_protect_dir();
+        if($protect_dir === false){
+            return;
+        }
+        $file = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
+        $path = realpath(ABSPATH.$file);
+        if(strpos($path, $protect_dir) !== 0){
+            return;
+        }
+        $this->exec_file($path);
     }
 
     function set_plugin_menu(){
@@ -62,7 +81,9 @@ class ProtectMedia
 <?php if(!$this->is_allow_override()){ ?>
     <div class="notice"><p>php.iniのAllowOverrideが有効か確認してください。</p></div>
 <?php } ?>
-<?php if(file_exists(self::HTACCESS_PATH) && !is_writable(self::HTACCESS_PATH)){ ?>
+<?php if(!file_exists(self::HTACCESS_PATH)){ ?>
+    <div class="notice notice-warning"><p><?php echo self::HTACCESS_PATH; ?>が存在しません。設定を保存して更新してください。</p></div>
+<?php } else if(!is_writable(self::HTACCESS_PATH)){ ?>
     <?php if($is_error){ ?>
         <div class="notice notice-alt notice-error"><p>.htaccessへの書き込み権限がありません。下記を<?php self::HTACCESS_PATH; ?>に記載ください</p></div>
         <div class="notice notice-error">
@@ -145,11 +166,8 @@ class ProtectMedia
      * @return string
      */
     protected function get_htaccess_str($path){
-        $endpoint = self::REWRITE_ENDPOINT;
+        $endpoint = home_url('/', 'relative');
         $wp_path = rtrim(ABSPATH, DIRECTORY_SEPARATOR);
-        if(strpos($endpoint, $wp_path) === 0){
-            $endpoint = substr($endpoint, strlen($wp_path));
-        }
         $uploads_dir = self::get_protect_dir($path);
         if(strpos($uploads_dir, $wp_path) === 0){
             $uploads_dir = substr($uploads_dir, strlen($wp_path));
@@ -158,7 +176,7 @@ class ProtectMedia
 RewriteEngine On
 RewriteBase /
 RewriteCond %{REQUEST_URI} ^$uploads_dir
-RewriteRule ^(.*)$ $endpoint [QSA,L]
+RewriteRule ^(.*)$ $endpoint [L]
 EOF;
     }
     /**
@@ -197,5 +215,55 @@ EOF;
             return false;
         }
         return true;
+    }
+
+    /**
+     * @param string $path
+     */
+    public function exec_file($path){
+        if(!$path){
+            http_response_code(500);
+            echo "Access Blocked";
+            exit;
+        }
+        // is blocked
+        if(ProtectMedia::is_block()){
+            http_response_code(500);
+            echo "Access Blocked";
+            exit;
+        }
+        // required auth login
+        if(!is_user_logged_in()){
+            http_response_code(401);
+            echo "Invalid Auth";
+            exit;
+        }
+
+        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        if(!$extension){
+            http_response_code(500);
+            echo "Invalid Server Error";
+            exit;
+        }
+        if(!file_exists($path)){
+            http_response_code(404);
+            echo "File Not Found";
+            exit;
+        }
+
+        if($extension === 'jpg' || $extension === 'jpeg') {
+            header('Content-Type: image/jpeg');
+        }else if($extension === 'gif'){
+            header('Content-Type: image/gif');
+        }else if($extension === 'png'){
+            header('Content-Type: image/png');
+        }else{
+            http_response_code(404);
+            echo "Un Support File Type";
+            exit;
+        }
+        header("X-Robots-Tag: noindex, nofollow");
+        readfile($path);
+        exit;
     }
 }

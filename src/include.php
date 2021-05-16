@@ -126,8 +126,8 @@ class ProtectMedia
         if (isset($_POST[self::CREDENTIAL_NAME]) && $_POST[self::CREDENTIAL_NAME]) {
             if (check_admin_referer(self::CREDENTIAL_ACTION, self::CREDENTIAL_NAME)) {
 
-                $path = isset($_POST['path']) ? $_POST['path'] : "";
-                $is_block = isset($_POST['block']) ? $_POST['block'] : 0;
+                $path = isset($_POST['path']) ? sanitize_text_field($_POST['path']) : "";
+                $is_block = isset($_POST['block']) ? sanitize_text_field($_POST['block']) : 0;
 
                 if($this->update_path($path)){
                     update_option(self::PLUGIN_DB_SETTING_BLOCK, $is_block);

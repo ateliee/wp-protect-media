@@ -60,13 +60,13 @@ class ProtectMedia
                 設定されたパスのファイルアクセスをログイン必須にします。
             </p>
 <?php if(!$this->is_allow_override()){ ?>
-    <div class="notice"><p><?php $this->is_allow_override(); ?>php.iniのAllowOverrideが有効か確認してください。</p></div>
+    <div class="notice"><p>php.iniのAllowOverrideが有効か確認してください。</p></div>
 <?php } ?>
 <?php if(file_exists(self::HTACCESS_PATH) && !is_writable(self::HTACCESS_PATH)){ ?>
     <?php if($is_error){ ?>
         <div class="notice notice-alt notice-error"><p>.htaccessへの書き込み権限がありません。下記を<?php self::HTACCESS_PATH; ?>に記載ください</p></div>
         <div class="notice notice-error">
-        <pre><?php esc_html($this->get_htaccess_str($path)); ?></pre>
+        <pre><?php echo esc_html($this->get_htaccess_str($path)); ?></pre>
         </div>
     <?php }else{ ?>
         <div class="notice notice-alt notice-error"><p>.htaccessへの書き込み権限がありません。</p></div>
@@ -76,13 +76,13 @@ class ProtectMedia
     <div class="notice notice-alt notice-error"><p>パスが無効のため保護が有効化されていません。</p></div>
 <?php } ?>
 <?php if($message = get_transient(self::PLUGIN_SETTING_TRANSIENT_MESSAGE)){ ?>
-    <div id="message" class="notice notice-success"><p><?php esc_html($message); ?></p></div>
+    <div id="message" class="notice notice-success"><p><?php echo esc_html($message); ?></p></div>
 <?php } ?>
             <form action="" method='post' id="my-submenu-form">
                 <?php wp_nonce_field(self::CREDENTIAL_ACTION, self::CREDENTIAL_NAME) ?>
                 <p>
                     <label for="title">パス設定</label>
-                    <input type="text" name="path" value="<?php esc_html($path); ?>" placeholder="uploadsからのパスを指定してください" size="60" />
+                    <input type="text" name="path" value="<?php echo esc_html($path); ?>" placeholder="uploadsからのパスを指定してください" size="60" />
                 </p>
                 <p>
                     <label for="title">アクセスを全て拒否</label>

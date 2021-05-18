@@ -267,6 +267,7 @@ EOF;
             echo "Un Support File Type";
             exit;
         }
+        http_response_code(200);
         header("X-Robots-Tag: noindex, nofollow");
         readfile($path);
         exit;

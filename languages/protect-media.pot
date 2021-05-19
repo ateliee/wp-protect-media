@@ -8,7 +8,7 @@ msgstr ""
 "Protect Media Pot "
 "v1.0.0\n"
 "POT-Creation-Date: "
-"2021-05-17 00:01+0900\n"
+"2021-05-19 14:42+0900\n"
 "PO-Revision-Date: \n"
 "Last-Translator: Your "
 "Name <you@example.com>\n"
@@ -102,33 +102,42 @@ msgid ""
 "is invalid."
 msgstr ""
 
-#: src/include.php:110
+#: src/include.php:111
 msgid "Path setting"
 msgstr ""
 
-#: src/include.php:111
+#: src/include.php:114
 msgid ""
 "Please specify the path "
 "from uploads"
 msgstr ""
 
-#: src/include.php:114
+#: src/include.php:115
+msgid ""
+"Specify one path per line"
+msgstr ""
+
+#: src/include.php:119
 msgid "Deny all access"
 msgstr ""
 
-#: src/include.php:134
+#: src/include.php:123
+msgid "Save"
+msgstr ""
+
+#: src/include.php:139
 msgid ""
 "The settings have been "
 "saved."
 msgstr ""
 
-#: src/include.php:200
+#: src/include.php:205
 msgid ""
 ".htaccess could not be "
 "read."
 msgstr ""
 
-#: src/include.php:209
+#: src/include.php:214
 msgid ""
 "Any changes to the "
 "directive between these "
@@ -136,7 +145,7 @@ msgid ""
 "overwritten."
 msgstr ""
 
-#: src/include.php:218
+#: src/include.php:223
 msgid ""
 "Failed to write to ."
 "htaccess."

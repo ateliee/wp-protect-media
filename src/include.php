@@ -37,18 +37,27 @@ class ProtectMedia
             add_action('admin_init', [$this, 'save_config']);
         }
         add_action('wp', [$this, 'elegance_referal_init']);
+
+        add_action('protect_media_error', [$this, 'do_error']);
     }
 
     function elegance_referal_init()
     {
         // protect dir check
-        $protect_dir = self::get_protect_dir();
-        if($protect_dir === false){
+        $protect_dirs = self::get_protect_dirs();
+        if($protect_dirs === false || empty($protect_dirs)){
             return;
         }
         $file = urldecode(parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH));
         $path = realpath(ABSPATH.$file);
-        if(strpos($path, $protect_dir) !== 0){
+        $check = false;
+        foreach($protect_dirs as $protect_dir){
+            if(strpos($path, $protect_dir) === 0){
+                $check = true;
+                break;
+            }
+        }
+        if(!$check){
             return;
         }
         $this->exec_file($path);
@@ -92,7 +101,7 @@ class ProtectMedia
     <?php if($is_error){ ?>
         <div class="notice notice-alt notice-error"><p><?php echo sprintf(esc_html__('You don\'t have write permission to .htaccess. Please describe the following in %s.', self::TEXTDOMAIN), self::HTACCESS_PATH); ?></p></div>
         <div class="notice notice-error">
-        <pre><?php echo esc_html($this->get_htaccess_str($path)); ?></pre>
+        <pre><?php echo esc_html($this->get_htaccess_str(explode("\n", $path))); ?></pre>
         </div>
     <?php }else{ ?>
         <div class="notice notice-alt notice-error"><p><?php esc_html_e('You don\'t have write permission to .htaccess.', self::TEXTDOMAIN); ?></p></div>
@@ -106,15 +115,20 @@ class ProtectMedia
 <?php } ?>
             <form action="" method='post' id="my-submenu-form">
                 <?php wp_nonce_field(self::CREDENTIAL_ACTION, self::CREDENTIAL_NAME) ?>
-                <p>
-                    <label for="title"><?php esc_html_e('Path setting', self::TEXTDOMAIN); ?></label>
-                    <input type="text" name="path" value="<?php echo esc_html($path); ?>" placeholder="<?php esc_html_e('Please specify the path from uploads', self::TEXTDOMAIN); ?>" size="60" />
-                </p>
-                <p>
-                    <label for="title"><?php esc_html_e('Deny all access', self::TEXTDOMAIN); ?></label>
-                    <input type="checkbox" name="block" value="1" <?php if($is_block){ ?> checked="checked"<?php } ?> />
-                </p>
-
+                <table class="table">
+                <tr>
+                    <td><label for="title"><?php esc_html_e('Path setting', self::TEXTDOMAIN); ?></label></td>
+                    <td>
+                        <div><textarea name="path" cols="100" rows="4"><?php echo esc_html($path); ?></textarea></div>
+                        <div class="hint">※ <?php esc_html_e('Please specify the path from uploads', self::TEXTDOMAIN); ?></div>
+                        <div class="hint">※ <?php esc_html_e('Specify one path per line', self::TEXTDOMAIN); ?></div>
+                    </td>
+                </tr>
+                <tr>
+                    <td><label for="title"><?php esc_html_e('Deny all access', self::TEXTDOMAIN); ?></label></td>
+                    <td><input type="checkbox" name="block" value="1" <?php if($is_block){ ?> checked="checked"<?php } ?> /></td>
+                </tr>
+                </table>
                 <p><input type="submit" value="<?php esc_html_e('Save'); ?>" class="button button-primary button-large"></p>
             </form>
         </div>
@@ -126,7 +140,7 @@ class ProtectMedia
         if (isset($_POST[self::CREDENTIAL_NAME]) && $_POST[self::CREDENTIAL_NAME]) {
             if (check_admin_referer(self::CREDENTIAL_ACTION, self::CREDENTIAL_NAME)) {
 
-                $path = isset($_POST['path']) ? sanitize_text_field($_POST['path']) : "";
+                $path = isset($_POST['path']) ? sanitize_textarea_field($_POST['path']) : "";
                 $is_block = isset($_POST['block']) ? sanitize_text_field($_POST['block']) : 0;
 
                 if($this->update_path($path)){
@@ -147,15 +161,29 @@ class ProtectMedia
      * 保護先のパス
      *
      * @param string|null $path
-     * @return string|false
+     * @return array|false
      */
-    public static function get_protect_dir($path = null){
-        if($path === null){
-            $path = get_option(self::PLUGIN_DB_SETTING_PATH);
-        }
+    public static function get_protect_dirs(){
+        $path = get_option(self::PLUGIN_DB_SETTING_PATH);
         if(!$path){
             return false;
         }
+        $paths = explode("\n", $path);
+        if(empty($path)){
+            return false;
+        }
+        $arr = [];
+        foreach($paths as $p){
+            $arr[] = self::get_upload_dir(trim($p));
+        }
+        return $arr;
+    }
+
+    /**
+     * @param string $path
+     * @return string
+     */
+    protected static function get_upload_dir($path){
         return wp_upload_dir()['basedir'].DIRECTORY_SEPARATOR.$path;
     }
 
@@ -167,31 +195,45 @@ class ProtectMedia
     }
 
     /**
-     * @param string $path
+     * @param array $paths
      * @return string
      */
-    protected function get_htaccess_str($path){
+    protected function get_htaccess_str($paths){
+        if(count($paths) <= 0){
+            return '';
+        }
         $endpoint = home_url('/', 'relative');
         $wp_path = rtrim(ABSPATH, DIRECTORY_SEPARATOR);
-        $uploads_dir = self::get_protect_dir($path);
-        if(strpos($uploads_dir, $wp_path) === 0){
-            $uploads_dir = substr($uploads_dir, strlen($wp_path));
+        $htaccess = 'RewriteEngine On'."\n".'RewriteBase /'."\n";
+        $n = 0;
+        $cnt = count($paths);
+        foreach($paths as $path){
+            $path = trim($path);
+            if(!$path){
+                continue;
+            }
+            $uploads_dir = self::get_upload_dir($path);
+            if(strpos($uploads_dir, $wp_path) === 0){
+                $uploads_dir = substr($uploads_dir, strlen($wp_path));
+            }
+            $htaccess .= 'RewriteCond %{REQUEST_URI} ^'.$uploads_dir;
+            if(($n + 1) < $cnt){
+                $htaccess .= ' [OR]';
+            }
+            $htaccess .= "\n";
+            $n ++;
         }
-        return <<< EOF
-RewriteEngine On
-RewriteBase /
-RewriteCond %{REQUEST_URI} ^$uploads_dir
-RewriteRule ^(.*)$ $endpoint [L]
-EOF;
+        $htaccess .= 'RewriteRule ^(.*)$ '.$endpoint.' [L]'."\n";
+        return $htaccess;
     }
     /**
      * パスの保存
      *
-     * @param string $path
+     * @param string $paths
      * @return bool
      */
-    protected function update_path($path){
-        update_option(self::PLUGIN_DB_SETTING_PATH, $path);
+    protected function update_path($paths){
+        update_option(self::PLUGIN_DB_SETTING_PATH, $paths);
 
         $str = '';
         if(file_exists(self::HTACCESS_PATH)){
@@ -203,7 +245,7 @@ EOF;
             }
         }
         $plugin_id = self::PLUGIN_ID;
-        $body_str = $this->get_htaccess_str($path);
+        $body_str = $this->get_htaccess_str(explode("\n", $paths));
         $begin_tag = '# BEGIN '.$plugin_id;
         $end_tag = '# END '.$plugin_id;
         $hint_tag = '# '.__('Any changes to the directive between these markers will be overwritten.', self::TEXTDOMAIN);
@@ -223,36 +265,45 @@ EOF;
     }
 
     /**
+     * @param int $error_code
+     */
+    public function do_error($error_code){
+        $message = 'Unknown Error';
+        switch ($error_code){
+            case 401:   $message = 'Invalid Auth';    break;
+            case 404:   $message = 'File Not Found';    break;
+            case 500:   $message = 'Access Blocked';    break;
+        }
+        http_response_code($error_code);
+        echo $message;
+    }
+
+    /**
      * @param string $path
      */
     public function exec_file($path){
         if(!$path){
-            http_response_code(500);
-            echo "Access Blocked";
+            do_action('protect_media_error', 500);
             exit;
         }
         // is blocked
         if(ProtectMedia::is_block()){
-            http_response_code(500);
-            echo "Access Blocked";
+            do_action('protect_media_error', 500);
             exit;
         }
         // required auth login
         if(!is_user_logged_in()){
-            http_response_code(401);
-            echo "Invalid Auth";
+            do_action('protect_media_error', 401);
             exit;
         }
 
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         if(!$extension){
-            http_response_code(500);
-            echo "Invalid Server Error";
+            do_action('protect_media_error', 500);
             exit;
         }
         if(!file_exists($path)){
-            http_response_code(404);
-            echo "File Not Found";
+            do_action('protect_media_error', 404);
             exit;
         }
 
@@ -263,8 +314,7 @@ EOF;
         }else if($extension === 'png'){
             header('Content-Type: image/png');
         }else{
-            http_response_code(404);
-            echo "Un Support File Type";
+            do_action('protect_media_error', 404);
             exit;
         }
         http_response_code(200);
